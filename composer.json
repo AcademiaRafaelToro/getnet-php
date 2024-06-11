@@ -1,5 +1,5 @@
 {
-  "name": "smartdata-co/getnet-php",
+  "name": "art/getnet-php",
   "description": "SDK php para integração com a API Getnet",
   "minimum-stability": "stable",
   "license": "MIT",
@@ -12,19 +12,5 @@
       "Getnet\\": "src//Getnet"
     }
   },
-  "authors": [
-    {
-      "name": "Bruno Paz",
-      "email": "brunopaz@azpay.com.br"
-    },
-    {
-      "name": "Edson Nascimento",
-      "email": "edson27bn@gmail.com"
-    },
-    {
-      "name": "Iuri Andreazza",
-      "email": "iuri@smartdata.science"
-    }
-  ],
-  "homepage": "https://github.com/smartdata-co/getnet-php"
+  "homepage": "https://github.com/AcademiaRafaelToro/getnet-php"
 }
