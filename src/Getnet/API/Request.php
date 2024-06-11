@@ -142,6 +142,9 @@ class Request {
             curl_setopt($curl, CURLOPT_POST, 1);
             curl_setopt($curl, CURLOPT_POSTFIELDS, $json);
         }
+
+        $defaultCurlOptions[CURLOPT_HTTPHEADER][] = 'x-qrcode-expiration-time: 900';
+        
         curl_setopt($curl, CURLOPT_ENCODING, "");
         curl_setopt_array($curl, $defaultCurlOptions);
 
