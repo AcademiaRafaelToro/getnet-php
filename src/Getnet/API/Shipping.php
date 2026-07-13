@@ -109,7 +109,7 @@ class Shipping implements \JsonSerializable {
      * @param mixed $shipping_amount
      */
     public function setShippingAmount($shipping_amount) {
-        $this->shipping_amount = (int)($shipping_amount * 100);
+        $this->shipping_amount = (int) round($shipping_amount * 100);
         
         return $this;
     }

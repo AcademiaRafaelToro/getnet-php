@@ -80,7 +80,7 @@ class Order implements \JsonSerializable {
      * @param mixed $sales_tax
      */
     public function setSalesTax($sales_tax) {
-        $this->sales_tax = (int)($sales_tax * 100);
+        $this->sales_tax = (int) round($sales_tax * 100);
         
         return $this;
     }
