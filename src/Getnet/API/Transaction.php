@@ -80,7 +80,7 @@ class Transaction {
      * @param mixed $amount
      */
     public function setAmount($amount) {
-        $this->amount = (int)($amount * 100);
+        $this->amount = (int) round($amount * 100);
         
         return $this;
     }
