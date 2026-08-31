@@ -53,6 +53,15 @@ class BaseResponse implements \JsonSerializable {
      * @return $this
      */
     public function mapperJson($json) {
+        // A Getnet nem sempre responde JSON valido (timeout, HTML de gateway,
+        // corpo vazio). Sem esta guarda, array_walk_recursive emitia warning e
+        // devolvia um objeto todo nulo que o chamador lia como sucesso.
+        if (! is_array($json)) {
+            $this->setResponseJSON($json);
+
+            return $this;
+        }
+
         array_walk_recursive($json, function ($value, $key) {
             
             if (property_exists($this, $key)) {
