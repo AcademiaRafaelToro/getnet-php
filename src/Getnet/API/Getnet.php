@@ -17,6 +17,22 @@ class Getnet {
     private $authorizationToken;
 
     private $keySession;
+
+    /**
+     * Validade em segundos do token retornado pelo /auth. Permite que o
+     * consumidor cacheie o token externamente em vez de reautenticar a cada
+     * transacao.
+     *
+     * @var int
+     */
+    private $authorizationExpiresIn = 0;
+
+    /**
+     * Tempo de expiracao do QR Code Pix, em segundos.
+     *
+     * @var int
+     */
+    private $qrCodeExpirationTime = 900;
     
 
     /**
@@ -26,7 +42,7 @@ class Getnet {
      * @param mixed $env
      * @return Getnet
      */
-    public function __construct($client_id, $client_secret, Environment $environment = null, $keySession = null) {
+    public function __construct($client_id, $client_secret, Environment $environment = null, $keySession = null, $authorizationToken = null) {
         
         if (!$environment) {
             $environment = Environment::production();
@@ -37,9 +53,15 @@ class Getnet {
         $this->setEnvironment($environment);
         $this->setKeySession($keySession);
 
-        $request = new Request($this);
+        // Com um token ja valido em maos nao ha motivo para bater no /auth.
+        if ($authorizationToken) {
+            $this->setAuthorizationToken($authorizationToken);
 
-        return $request->auth($this);
+            return;
+        }
+
+        $request = new Request($this);
+        $request->auth($this);
     }
     
     /**
@@ -121,6 +143,40 @@ class Getnet {
     }
 
     /**
+     * @return int
+     */
+    public function getAuthorizationExpiresIn() {
+        return $this->authorizationExpiresIn;
+    }
+
+    /**
+     * @param int $expiresIn
+     * @return Getnet
+     */
+    public function setAuthorizationExpiresIn($expiresIn) {
+        $this->authorizationExpiresIn = (int)$expiresIn;
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getQrCodeExpirationTime() {
+        return $this->qrCodeExpirationTime;
+    }
+
+    /**
+     * @param int $seconds
+     * @return Getnet
+     */
+    public function setQrCodeExpirationTime($seconds) {
+        $this->qrCodeExpirationTime = (int)$seconds;
+
+        return $this;
+    }
+
+    /**
      * 
      * @param Transaction $transaction
      * @return BaseResponse|AuthorizeResponse
@@ -141,6 +197,8 @@ class Getnet {
 
             $error = new BaseResponse();
             $error->mapperJson(json_decode($e->getMessage(), true));
+            $error->setErrorMessage($e->getMessage());
+            $error->setStatus(Transaction::STATUS_ERROR);
 
             return $error;
         }
@@ -164,6 +222,8 @@ class Getnet {
 
             $error = new BaseResponse();
             $error->mapperJson(json_decode($e->getMessage(), true));
+            $error->setErrorMessage($e->getMessage());
+            $error->setStatus(Transaction::STATUS_ERROR);
 
             return $error;
         }
@@ -189,6 +249,8 @@ class Getnet {
 
             $error = new BaseResponse();
             $error->mapperJson(json_decode($e->getMessage(), true));
+            $error->setErrorMessage($e->getMessage());
+            $error->setStatus(Transaction::STATUS_ERROR);
 
             return $error;
         }
@@ -216,6 +278,8 @@ class Getnet {
 
             $error = new BaseResponse();
             $error->mapperJson(json_decode($e->getMessage(), true));
+            $error->setErrorMessage($e->getMessage());
+            $error->setStatus(Transaction::STATUS_ERROR);
 
             return $error;
         }
@@ -245,6 +309,8 @@ class Getnet {
 
             $error = new BaseResponse();
             $error->mapperJson(json_decode($e->getMessage(), true));
+            $error->setErrorMessage($e->getMessage());
+            $error->setStatus(Transaction::STATUS_ERROR);
 
             return $error;
         }
@@ -275,6 +341,8 @@ class Getnet {
 
             $error = new BaseResponse();
             $error->mapperJson(json_decode($e->getMessage(), true));
+            $error->setErrorMessage($e->getMessage());
+            $error->setStatus(Transaction::STATUS_ERROR);
 
             return $error;
         }
@@ -301,9 +369,9 @@ class Getnet {
             // $pixresponse->generateImage();
 
         } catch (\Exception $e) {
-            $error = new PixResponse();
-            $error->mapperJson(json_decode($e->getMessage(), true));
-            return $error;
+            // Antes a excecao virava um PixResponse todo nulo, que o chamador
+            // interpretava como sucesso. Propaga para quem chamou decidir.
+            throw $e;
         }
         
         
