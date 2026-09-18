@@ -83,16 +83,25 @@ class Request {
 
         $querystring = http_build_query($params);
 
+        $request = self::CURL_TYPE_AUTH . ' ' . $this->getFullUrl($url_path);
+
         try {
             $response = $this->send($credentials, $url_path, self::CURL_TYPE_AUTH, $querystring);
         } catch (Exception $e) {
-            throw new Exception('Falha na autenticacao Getnet: ' . $e->getMessage(), 100, $e);
+            throw GetnetRequestException::wrapping(
+                'Falha na autenticacao Getnet: ' . $e->getMessage(),
+                $e,
+                $request
+            );
         }
 
         if (! isset($response["access_token"])) {
-            throw new Exception(
-                'Getnet nao retornou access_token: ' . json_encode($response),
-                100
+            throw new GetnetRequestException(
+                'Getnet nao retornou access_token',
+                0,
+                json_encode($response),
+                $request,
+                $response
             );
         }
 
@@ -205,15 +214,20 @@ class Request {
                 $seconds = curl_getinfo($curl, CURLINFO_TOTAL_TIME);
                 curl_close($curl);
 
-                throw new Exception(sprintf(
-                    'Falha de comunicacao com a Getnet em %s %s apos %d tentativa(s) e %.1fs: [%d] %s',
-                    $method,
-                    $url,
-                    $attempt,
-                    $seconds,
-                    $errno,
-                    $error
-                ), 100);
+                throw new GetnetRequestException(
+                    sprintf(
+                        'Falha de comunicacao com a Getnet em %s %s apos %d tentativa(s) e %.1fs: [%d] %s',
+                        $method,
+                        $url,
+                        $attempt,
+                        $seconds,
+                        $errno,
+                        $error
+                    ),
+                    0,
+                    null,
+                    $method . ' ' . $url
+                );
             }
 
             // backoff progressivo: 200ms, 400ms
@@ -235,23 +249,31 @@ class Request {
                 $description = json_encode($description);
             }
 
-            throw new Exception(sprintf(
-                'Getnet respondeu erro em %s %s (HTTP %d): %s',
-                $method,
-                $url,
+            throw new GetnetRequestException(
+                sprintf(
+                    'Getnet respondeu erro em %s %s (HTTP %d): %s',
+                    $method,
+                    $url,
+                    $httpCode,
+                    $description
+                ),
                 $httpCode,
-                $description
-            ), $httpCode ?: 100);
+                $response,
+                $method . ' ' . $url,
+                $decoded
+            );
         }
 
+        // O corpo nao entra na mensagem: ele viaja em responseBody, e
+        // interpola-lo aqui fazia o mesmo texto ser persistido duas vezes.
         if ($httpCode >= 400) {
-            throw new Exception(sprintf(
-                'Getnet respondeu HTTP %d em %s %s: %s',
+            throw new GetnetRequestException(
+                sprintf('Getnet respondeu HTTP %d em %s %s', $httpCode, $method, $url),
                 $httpCode,
-                $method,
-                $url,
-                $response
-            ), $httpCode);
+                $response,
+                $method . ' ' . $url,
+                is_array($decoded) ? $decoded : null
+            );
         }
 
         // Status code 204 don't have content. That means $response will be always false
@@ -261,13 +283,12 @@ class Request {
         }
 
         if ($decoded === null) {
-            throw new Exception(sprintf(
-                'Resposta invalida da Getnet em %s %s (HTTP %d): %s',
-                $method,
-                $url,
+            throw new GetnetRequestException(
+                sprintf('Resposta invalida da Getnet em %s %s (HTTP %d)', $method, $url, $httpCode),
                 $httpCode,
-                var_export($response, true)
-            ), 100);
+                is_string($response) ? $response : null,
+                $method . ' ' . $url
+            );
         }
 
         return $decoded;

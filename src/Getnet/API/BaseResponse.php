@@ -308,8 +308,15 @@ class BaseResponse implements \JsonSerializable {
      * @param mixed $array
      */
     public function setResponseJSON($array) {
+        // json_encode(null) produz a string "null", que chegava gravada no
+        // pedido sem nenhuma informacao sobre a falha. Guarda um envelope
+        // minimo para que o retorno seja sempre inspecionavel.
+        if ($array === null) {
+            $array = ['error_message' => 'Getnet nao devolveu payload de resposta'];
+        }
+
         $this->responseJSON = json_encode($array, JSON_PRETTY_PRINT);
-        
+
         return $this;
     }
     /**

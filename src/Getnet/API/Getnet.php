@@ -177,7 +177,36 @@ class Getnet {
     }
 
     /**
-     * 
+     * Monta a resposta de erro preservando o payload original da Getnet.
+     *
+     * Antes cada catch fazia json_decode($e->getMessage()): como a mensagem
+     * deixou de ser JSON cru, o decode devolvia null e o responseJSON era
+     * gravado como a string "null", sem nenhum motivo da falha.
+     *
+     * @param \Exception $e
+     * @return BaseResponse
+     */
+    private function buildErrorResponse(\Exception $e) {
+        $error = new BaseResponse();
+
+        $body = ($e instanceof GetnetRequestException)
+            ? $e->toErrorPayload()
+            : ['error_message' => $e->getMessage()];
+
+        $error->mapperJson($body);
+        $error->setErrorMessage($e->getMessage());
+
+        // getStatus() deriva DENIED/ERROR do status_code. Só forca ERROR
+        // quando nao ha status HTTP para classificar a falha.
+        if (! $error->getStatus()) {
+            $error->setStatus(Transaction::STATUS_ERROR);
+        }
+
+        return $error;
+    }
+
+    /**
+     *
      * @param Transaction $transaction
      * @return BaseResponse|AuthorizeResponse
      */
@@ -195,12 +224,7 @@ class Getnet {
             }
         } catch (\Exception $e) {
 
-            $error = new BaseResponse();
-            $error->mapperJson(json_decode($e->getMessage(), true));
-            $error->setErrorMessage($e->getMessage());
-            $error->setStatus(Transaction::STATUS_ERROR);
-
-            return $error;
+            return $this->buildErrorResponse($e);
         }
 
         $authresponse = new AuthorizeResponse();
@@ -220,12 +244,7 @@ class Getnet {
             $response = $request->post($this, "/v1/payments/credit/".$payment_id."/confirm", "");
         } catch (\Exception $e) {
 
-            $error = new BaseResponse();
-            $error->mapperJson(json_decode($e->getMessage(), true));
-            $error->setErrorMessage($e->getMessage());
-            $error->setStatus(Transaction::STATUS_ERROR);
-
-            return $error;
+            return $this->buildErrorResponse($e);
         }
         
         $authresponse = new AuthorizeResponse();
@@ -247,12 +266,7 @@ class Getnet {
             $response = $request->post($this, "/v1/payments/debit/".$payment_id."/authenticated/finalize", json_encode($payer_authentication_response));
         } catch (\Exception $e) {
 
-            $error = new BaseResponse();
-            $error->mapperJson(json_decode($e->getMessage(), true));
-            $error->setErrorMessage($e->getMessage());
-            $error->setStatus(Transaction::STATUS_ERROR);
-
-            return $error;
+            return $this->buildErrorResponse($e);
         }
         
         $authresponse = new AuthorizeResponse();
@@ -276,12 +290,7 @@ class Getnet {
             $response = $request->post($this, "/v1/payments/credit/".$payment_id."/cancel", json_encode($amount));
         } catch (\Exception $e) {
 
-            $error = new BaseResponse();
-            $error->mapperJson(json_decode($e->getMessage(), true));
-            $error->setErrorMessage($e->getMessage());
-            $error->setStatus(Transaction::STATUS_ERROR);
-
-            return $error;
+            return $this->buildErrorResponse($e);
         }
         
         $authresponse = new AuthorizeResponse();
@@ -307,12 +316,7 @@ class Getnet {
             $response = $request->post($this, "/v1/payments/cancel/request", json_encode($params));
         } catch (\Exception $e) {
 
-            $error = new BaseResponse();
-            $error->mapperJson(json_decode($e->getMessage(), true));
-            $error->setErrorMessage($e->getMessage());
-            $error->setStatus(Transaction::STATUS_ERROR);
-
-            return $error;
+            return $this->buildErrorResponse($e);
         }
         
         $authresponse = new AuthorizeResponse();
@@ -339,42 +343,30 @@ class Getnet {
             return $boletoresponse;
         } catch (\Exception $e) {
 
-            $error = new BaseResponse();
-            $error->mapperJson(json_decode($e->getMessage(), true));
-            $error->setErrorMessage($e->getMessage());
-            $error->setStatus(Transaction::STATUS_ERROR);
-
-            return $error;
+            return $this->buildErrorResponse($e);
         }
     }
 
     /**
      *
+     * Diferente dos demais, propaga a excecao: antes ela virava um PixResponse
+     * todo nulo, que o chamador interpretava como sucesso.
+     *
      * @param Transaction $transaction
-     * @return BaseResponse|PixResponse
+     * @return PixResponse
      */
     public function pix(Transaction $transaction) {
-        try {
-            $request = new Request($this);
-            $response = $request->post($this, "/v1/payments/qrcode/pix", json_encode([
-                "amount" => $transaction->getAmount(),
-                "currency" => $transaction->getCurrency(),
-                "order_id" => $transaction->getOrder()->getOrderId(),
-                "customer_id" => $transaction->getCustomer()->getCustomerId(),
-            ]));
+        $request = new Request($this);
+        $response = $request->post($this, "/v1/payments/qrcode/pix", json_encode([
+            "amount" => $transaction->getAmount(),
+            "currency" => $transaction->getCurrency(),
+            "order_id" => $transaction->getOrder()->getOrderId(),
+            "customer_id" => $transaction->getCustomer()->getCustomerId(),
+        ]));
 
-            $pixresponse = new PixResponse();
-            $pixresponse->mapperJson($response);
-            // $pixresponse->setBaseUrl($request->getBaseUrl());
-            // $pixresponse->generateImage();
+        $pixresponse = new PixResponse();
+        $pixresponse->mapperJson($response);
 
-        } catch (\Exception $e) {
-            // Antes a excecao virava um PixResponse todo nulo, que o chamador
-            // interpretava como sucesso. Propaga para quem chamou decidir.
-            throw $e;
-        }
-        
-        
         return $pixresponse;
     }
 
