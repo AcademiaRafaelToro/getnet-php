@@ -12,5 +12,16 @@
       "Getnet\\": "src//Getnet"
     }
   },
-  "homepage": "https://github.com/AcademiaRafaelToro/getnet-php"
+  "homepage": "https://github.com/AcademiaRafaelToro/getnet-php",
+  "require-dev": {
+    "phpunit/phpunit": "^9.5"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Getnet\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "phpunit"
+  }
 }
