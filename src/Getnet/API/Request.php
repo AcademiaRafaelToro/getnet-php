@@ -101,7 +101,7 @@ class Request {
                 0,
                 json_encode($response),
                 $request,
-                $response
+                is_array($response) ? $response : null
             );
         }
 

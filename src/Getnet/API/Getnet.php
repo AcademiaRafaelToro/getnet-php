@@ -186,7 +186,7 @@ class Getnet {
      * @param \Exception $e
      * @return BaseResponse
      */
-    private function buildErrorResponse(\Exception $e) {
+    protected function buildErrorResponse(\Exception $e) {
         $error = new BaseResponse();
 
         $body = ($e instanceof GetnetRequestException)
@@ -196,9 +196,12 @@ class Getnet {
         $error->mapperJson($body);
         $error->setErrorMessage($e->getMessage());
 
-        // getStatus() deriva DENIED/ERROR do status_code. Só forca ERROR
-        // quando nao ha status HTTP para classificar a falha.
-        if (! $error->getStatus()) {
+        // getStatus() deriva o status do status_code a cada chamada, e
+        // sobrescreve o que setStatus() tenha gravado. Uma resposta montada
+        // num catch nunca pode sair AUTHORIZED ou PENDING, entao o status_code
+        // que nao classifique a falha e descartado antes de forcar ERROR.
+        if (! in_array($error->getStatus(), [Transaction::STATUS_DENIED, Transaction::STATUS_ERROR], true)) {
+            $error->setStatusCode(null);
             $error->setStatus(Transaction::STATUS_ERROR);
         }
 

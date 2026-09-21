@@ -148,7 +148,10 @@ class GetnetRequestException extends Exception {
             ];
         }
 
-        if ($this->httpCode && ! isset($body['status_code'])) {
+        // Somente um HTTP de erro classifica a falha. Um 2xx com corpo
+        // invalido tambem chega aqui, e injetar esse status faria
+        // BaseResponse::getStatus() devolver AUTHORIZED para uma falha.
+        if ($this->httpCode >= 400 && ! isset($body['status_code'])) {
             $body['status_code'] = $this->httpCode;
         }
 

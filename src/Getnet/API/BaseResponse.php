@@ -315,7 +315,19 @@ class BaseResponse implements \JsonSerializable {
             $array = ['error_message' => 'Getnet nao devolveu payload de resposta'];
         }
 
-        $this->responseJSON = json_encode($array, JSON_PRETTY_PRINT);
+        // O corpo pode vir fora de UTF-8 (HTML de proxy em Latin-1, binario),
+        // e json_encode devolveria false, contradizendo a garantia acima.
+        $flags = JSON_PRETTY_PRINT | JSON_PARTIAL_OUTPUT_ON_ERROR;
+
+        if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
+            $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
+        }
+
+        $json = json_encode($array, $flags);
+
+        $this->responseJSON = is_string($json)
+            ? $json
+            : '{"error_message":"falha ao serializar a resposta da Getnet"}';
 
         return $this;
     }
